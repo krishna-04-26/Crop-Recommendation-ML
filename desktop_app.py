@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 import joblib
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QDoubleSpinBox,
@@ -15,14 +14,10 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QMainWindow,
     QMessageBox,
-    QProgressBar,
     QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -60,10 +55,6 @@ APP_STYLE = (
     "QPushButton#primary { background: #237547; color: white; border: 1px solid #1b603a; padding: 8px 18px; }"
     "QPushButton#primary:hover { background: #195c35; }"
     "QLabel#result { font-size: 19px; font-weight: 700; color: #145a32; }"
-    "QProgressBar { border: 1px solid #c8d6cb; border-radius: 6px; text-align: center; background: #edf2ee; height: 19px; }"
-    "QProgressBar::chunk { background: #3b9662; border-radius: 5px; }"
-    "QTableWidget { background: #fcfdfc; border: 1px solid #d8e1da; gridline-color: #e8eeea; }"
-    "QHeaderView::section { background: #e8f0e9; border: none; border-bottom: 1px solid #d8e1da; padding: 5px; font-weight: 600; }"
 )
 
 
@@ -75,7 +66,7 @@ class CropRecommendationWindow(QMainWindow):
         self.ranges = bundle["feature_ranges"]
         self.inputs: dict[str, QDoubleSpinBox] = {}
         self.setWindowTitle("Crop Recommendation")
-        self.setMinimumSize(760, 850)
+        self.setMinimumSize(760, 650)
         self._build_interface()
 
     def _spin_box(self, feature: str) -> QDoubleSpinBox:
@@ -164,22 +155,6 @@ class CropRecommendationWindow(QMainWindow):
         self.result = QLabel("Ready for your measurements")
         self.result.setObjectName("result")
         result_layout.addWidget(self.result)
-        self.status = QLabel("Select Get recommendation to see the model output.")
-        self.status.setObjectName("hint")
-        result_layout.addWidget(self.status)
-        self.confidence = QProgressBar()
-        self.confidence.setRange(0, 100)
-        self.confidence.setValue(0)
-        self.confidence.setFormat("Confidence: %p%")
-        result_layout.addWidget(self.confidence)
-        self.probabilities = QTableWidget(3, 2)
-        self.probabilities.setHorizontalHeaderLabels(["Crop", "Probability"])
-        self.probabilities.verticalHeader().setVisible(False)
-        self.probabilities.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.probabilities.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.probabilities.setSelectionMode(QTableWidget.NoSelection)
-        self.probabilities.setFixedHeight(132)
-        result_layout.addWidget(self.probabilities)
         layout.addWidget(result_box)
 
         note = QLabel("Educational model only - consult local agronomic experts for real farm decisions.")
@@ -194,22 +169,17 @@ class CropRecommendationWindow(QMainWindow):
             minimum = float(self.ranges[feature]["min"])
             maximum = float(self.ranges[feature]["max"])
             control.setValue(round((minimum + maximum) / 2, control.decimals()))
-        self._clear_result("Ready for your measurements", "Select Get recommendation to see the model output.")
+        self._clear_result("Ready for your measurements")
 
     def use_example(self) -> None:
         """Load a valid sample used in the earlier project demonstration."""
         example = {"N": 20, "P": 75, "K": 200, "temperature": 22, "humidity": 92, "ph": 6.0, "rainfall": 110}
         for feature, value in example.items():
             self.inputs[feature].setValue(value)
-        self._clear_result("Example values loaded", "These values are ready to evaluate.")
+        self._clear_result("Example values loaded")
 
-    def _clear_result(self, title: str, message: str) -> None:
+    def _clear_result(self, title: str) -> None:
         self.result.setText(title)
-        self.status.setText(message)
-        self.confidence.setValue(0)
-        for row in range(3):
-            for column in range(2):
-                self.probabilities.setItem(row, column, QTableWidgetItem("-"))
 
     def recommend(self) -> None:
         """Run the saved model and display an interpretable prediction summary."""
@@ -220,17 +190,7 @@ class CropRecommendationWindow(QMainWindow):
             QMessageBox.warning(self, "Invalid measurement", str(error))
             return
 
-        confidence = round(result["confidence"] * 100)
         self.result.setText(f"Recommended crop: {result['prediction'].title()}")
-        self.status.setText("Highest-probability prediction from the trained Decision Tree.")
-        self.confidence.setValue(confidence)
-        for row, item in enumerate(result["top_3_probabilities"]):
-            crop = QTableWidgetItem(item["label"].title())
-            probability = QTableWidgetItem(f"{item['probability'] * 100:.1f}%")
-            crop.setTextAlignment(Qt.AlignCenter)
-            probability.setTextAlignment(Qt.AlignCenter)
-            self.probabilities.setItem(row, 0, crop)
-            self.probabilities.setItem(row, 1, probability)
 
 
 def main() -> None:
