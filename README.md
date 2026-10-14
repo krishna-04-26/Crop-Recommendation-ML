@@ -113,7 +113,7 @@ Users can enter the seven soil and weather measurements, then view **only the si
 1. Enter the soil nutrients and pH in the **Soil nutrients** panel.
 2. Enter temperature, humidity, and rainfall in **Growing conditions**.
 3. Select **Find my crop** to display the predicted crop.
-4. Select **Use example values** to try a built-in example, or **Reset** to restore the input defaults.
+4. Select **Use example values** to load a random real dataset sample each time (without consecutive repeats), or **Reset** to restore the input defaults.
 
 For example, N=20, P=75, K=200, temperature=22, humidity=92, pH=6.0, and rainfall=110 produce `Recommended crop: Apple` with the supplied model workflow. Input controls display and enforce the dataset's observed ranges. Nutrient units and the rainfall measurement period must match the source dataset; their primary documentation is not supplied in this repository.
 

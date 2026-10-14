@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sys
+import csv
+import random
 from pathlib import Path
 
 import joblib
@@ -71,6 +73,8 @@ class CropRecommendationWindow(QMainWindow):
         super().__init__()
         self.ranges = bundle["feature_ranges"]
         self.inputs: dict[str, QDoubleSpinBox] = {}
+        self.examples: list[dict[str, float]] | None = None
+        self.last_example_index: int | None = None
         self.setWindowTitle("Crop Recommendation")
         self.setMinimumSize(820, 790)
         self.resize(900, 850)
@@ -208,11 +212,27 @@ class CropRecommendationWindow(QMainWindow):
         self._clear_result("Ready for your measurements")
 
     def use_example(self) -> None:
-        """Load a valid sample used in the earlier project demonstration."""
-        example = {"N": 20, "P": 75, "K": 200, "temperature": 22, "humidity": 92, "ph": 6.0, "rainfall": 110}
+        """Choose a random real dataset sample without consecutive repeats."""
+        if self.examples is None:
+            try:
+                with (BASE_DIRECTORY / "Crop_recommendation.csv").open(newline="", encoding="utf-8") as source:
+                    self.examples = [
+                        {feature: float(row[feature]) for feature in FEATURE_COLUMNS}
+                        for row in csv.DictReader(source)
+                    ]
+                if not self.examples:
+                    raise ValueError("The example dataset is empty.")
+            except (OSError, ValueError, KeyError) as error:
+                self.examples = None
+                QMessageBox.warning(self, "Examples unavailable", str(error))
+                return
+        candidates = [index for index in range(len(self.examples)) if index != self.last_example_index]
+        index = random.choice(candidates or [0])
+        self.last_example_index = index
+        example = self.examples[index]
         for feature, value in example.items():
             self.inputs[feature].setValue(value)
-        self._clear_result("Example values loaded")
+        self._clear_result("Random example loaded")
 
     def _clear_result(self, title: str) -> None:
         self.result.setText(title)
