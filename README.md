@@ -15,14 +15,49 @@ The model predicts one of 22 crop labels from soil nutrient levels (N, P, K), te
 
 ## Setup
 
-Python 3.10+ is recommended.
+Install Python 3.10 or later and Git. Run all commands from the project folder. A graphical desktop session is required for the interface.
+
+### 1. Download the project
+
+```bash
+git clone https://github.com/krishna-04-26/Crop-Recommendation-ML.git
+cd Crop-Recommendation-ML
+```
+
+### 2. Create and activate a virtual environment
+
+On macOS or Linux:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
+
+On Windows (PowerShell):
+
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+### 3. Install dependencies and the project package
+
+```bash
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
+
+The last command installs the modules under `src/` so that both training and the desktop app can import them.
+
+### 4. Train the model and open the app
+
+```bash
+python -m crop_recommendation.train --data Crop_recommendation.csv
+python desktop_app.py
+```
+
+Training is required on a fresh clone because generated model files are excluded from Git. After the first training run, launch the app directly with `python desktop_app.py`.
 
 ## Run the complete experiment
 
@@ -59,7 +94,28 @@ python -m crop_recommendation.train --data Crop_recommendation.csv
 python desktop_app.py
 ```
 
-Users can enter the seven soil and weather measurements, then view the recommended crop and its top three predicted probabilities. This interface uses the native Qt desktop toolkit through PySide6; it does not start a web server or require a browser.
+Users can enter the seven soil and weather measurements, then view **only the single best predicted crop**. This interface uses the native Qt desktop toolkit through PySide6.
+
+1. Enter the soil nutrients and pH in the **Soil nutrients** panel.
+2. Enter temperature, humidity, and rainfall in **Growing conditions**.
+3. Select **Get recommendation** to display the predicted crop.
+4. Select **Use example values** to try a built-in example, or **Reset** to restore the input defaults.
+
+For example, N=20, P=75, K=200, temperature=22, humidity=92, pH=6.0, and rainfall=110 produce `Recommended crop: Apple` with the supplied model workflow. Input controls display and enforce the dataset's observed ranges. Nutrient units and the rainfall measurement period must match the source dataset; their primary documentation is not supplied in this repository.
+
+## How it works
+
+The training script reads the CSV, checks its structure, and splits the records into training, validation, and test sets. Each Decision Tree learns numeric split rules from the training set, such as a humidity or nutrient threshold. Validation scores select the configuration before the final test evaluation.
+
+The selected model is saved in `artifacts/decision_tree_model.joblib`. The desktop app loads this file, passes your seven measurements to the prediction module, and displays the class with the highest predicted probability. The desktop display shows a single crop; the optional CLI also exposes probabilities for analysis.
+
+## Troubleshooting
+
+- **`No module named crop_recommendation`:** activate the virtual environment and run `python -m pip install -e .` from the project folder.
+- **Model not found:** run the training command before opening the app.
+- **Missing dependencies:** run `python -m pip install -r requirements.txt` in the active environment.
+- **Qt platform/display error:** launch the app on a machine with a graphical desktop, rather than in a headless terminal session.
+- **Windows environment activation is blocked:** you can use `.venv\Scripts\python.exe` in place of `python` for installation, training, and launching, without activating the environment.
 
 ## Methodology
 
@@ -80,6 +136,10 @@ The data contain 2,200 observations and are balanced across 22 labels. A high sc
 ## Project structure
 
 ```text
+desktop_app.py           native Python desktop interface
+Crop_recommendation.csv  source dataset
+requirements.txt         Python dependencies
+pyproject.toml           installable package configuration
 src/crop_recommendation/  reproducible training, evaluation, reporting, and CLI prediction
 tests/                    data and modelling unit tests
 reports/                  assignment-report template and generated outputs
