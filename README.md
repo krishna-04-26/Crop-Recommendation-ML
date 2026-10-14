@@ -25,6 +25,8 @@ Install Python 3.10 or later (Python 3.12 is a good choice), clone this reposito
 
 The launcher automatically creates a local environment, installs dependencies, prepares the model, and opens the desktop app. First-time setup requires internet and can take a few minutes; keep the setup window open until the app appears. Later launches reuse the environment and model. If dependencies change after pulling an update, the launcher refreshes them automatically.
 
+The desktop app opens with a brief animated Crop Compass welcome: a growing sprout and progress bar transition into the main window.
+
 The launchers are Python app starters, not standalone executables: Python must be installed. On Linux, install your distribution's `python3-venv` package if needed; some file managers require enabling execution of executable text files. Git clones preserve the executable permission on the macOS and Linux launchers; ZIP downloads may require granting that permission in file properties. If macOS blocks a downloaded launcher, use Finder's **Open** action and follow the system prompt.
 
 ## Manual setup (optional)

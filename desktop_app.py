@@ -8,7 +8,8 @@ import random
 from pathlib import Path
 
 import joblib
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEasingCurve, QPropertyAnimation, QTimer, QVariantAnimation
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QApplication,
     QDoubleSpinBox,
@@ -18,10 +19,130 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
+
+
+class SproutMark(QWidget):
+    """Vector sprout that grows as the opening animation advances."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setFixedSize(140, 140)
+        self.growth = 0.0
+
+    def grow(self, value: float) -> None:
+        self.growth = value
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#e5ebdc"))
+        painter.drawEllipse(4, 4, 132, 132)
+        painter.translate(70, 100)
+        painter.scale(0.3 + self.growth * 0.7, 0.3 + self.growth * 0.7)
+        painter.setOpacity(self.growth)
+        painter.setPen(QPen(QColor("#214e39"), 4, Qt.SolidLine, Qt.RoundCap))
+        stem = QPainterPath()
+        stem.moveTo(0, 0)
+        stem.cubicTo(0, -18, 2, -36, 12, -55)
+        painter.drawPath(stem)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#214e39"))
+        leaf = QPainterPath()
+        leaf.moveTo(5, -36)
+        leaf.cubicTo(8, -64, 34, -69, 42, -65)
+        leaf.cubicTo(43, -42, 26, -31, 5, -36)
+        painter.drawPath(leaf)
+        painter.setBrush(QColor("#6b956a"))
+        leaf = QPainterPath()
+        leaf.moveTo(1, -22)
+        leaf.cubicTo(-22, -18, -40, -35, -38, -53)
+        leaf.cubicTo(-15, -57, 0, -44, 1, -22)
+        painter.drawPath(leaf)
+        painter.end()
+
+
+class OpeningSplash(QFrame):
+    """Short animated welcome that hands over to the desktop window."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.window: CropRecommendationWindow | None = None
+        self.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint)
+        self.setFixedSize(480, 410)
+        self.setObjectName("opening")
+        self.setStyleSheet(
+            "QFrame#opening { background: #f5f3ec; border: 1px solid #dce3d5; border-radius: 20px; }"
+            "QLabel#splashTitle { font-size: 30px; font-weight: 700; color: #214e39; }"
+            "QLabel#splashCaption { color: #738078; font-size: 13px; }"
+            "QProgressBar { background: #e2e7da; border: none; border-radius: 2px; max-height: 4px; }"
+            "QProgressBar::chunk { background: #214e39; border-radius: 2px; }"
+        )
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(55, 30, 55, 35)
+        layout.setSpacing(12)
+        self.mark = SproutMark()
+        layout.addWidget(self.mark, alignment=Qt.AlignCenter)
+        title = QLabel("Crop Compass")
+        title.setObjectName("splashTitle")
+        layout.addWidget(title, alignment=Qt.AlignCenter)
+        caption = QLabel("Good beginnings. Better growing.")
+        caption.setObjectName("splashCaption")
+        layout.addWidget(caption, alignment=Qt.AlignCenter)
+        layout.addSpacing(18)
+        self.progress = QProgressBar()
+        self.progress.setTextVisible(False)
+        self.progress.setRange(0, 100)
+        layout.addWidget(self.progress)
+        self.status = QLabel("Opening your workspace…")
+        self.status.setObjectName("splashCaption")
+        layout.addWidget(self.status, alignment=Qt.AlignCenter)
+        screen = QApplication.primaryScreen()
+        if screen:
+            self.move(screen.availableGeometry().center() - self.rect().center())
+
+        self.animation = QVariantAnimation(self)
+        self.animation.setStartValue(0.0)
+        self.animation.setEndValue(1.0)
+        self.animation.setDuration(1600)
+        self.animation.setEasingCurve(QEasingCurve.InOutCubic)
+        self.animation.valueChanged.connect(self._advance)
+        self.animation.finished.connect(self._finish)
+        self.fade = QPropertyAnimation(self, b"windowOpacity", self)
+        self.fade.setDuration(260)
+        self.fade.setStartValue(1.0)
+        self.fade.setEndValue(0.0)
+        self.fade.finished.connect(self.close)
+
+    def start(self) -> None:
+        self.show()
+        self.animation.start()
+        QTimer.singleShot(50, self._prepare_window)
+
+    def _advance(self, value: float) -> None:
+        self.mark.grow(value)
+        self.progress.setValue(round(value * 100))
+
+    def _prepare_window(self) -> None:
+        try:
+            self.window = CropRecommendationWindow(joblib.load(MODEL_PATH))
+        except Exception as error:
+            self.animation.stop()
+            QMessageBox.critical(self, "Could not open Crop Compass", str(error))
+            self.close()
+            QApplication.quit()
+
+    def _finish(self) -> None:
+        if self.window is not None:
+            self.status.setText("Ready to grow.")
+            self.window.show()
+            self.fade.start()
 
 from crop_recommendation import FEATURE_COLUMNS
 from crop_recommendation.predict import predict
@@ -263,8 +384,8 @@ def main() -> None:
         )
     app = QApplication(sys.argv)
     app.setStyleSheet(APP_STYLE)
-    window = CropRecommendationWindow(joblib.load(MODEL_PATH))
-    window.show()
+    splash = OpeningSplash()
+    splash.start()
     sys.exit(app.exec())
 
 
