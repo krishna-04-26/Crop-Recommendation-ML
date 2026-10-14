@@ -6,13 +6,12 @@ import sys
 from pathlib import Path
 
 import joblib
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QDoubleSpinBox,
-    QFormLayout,
     QFrame,
     QGridLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -39,22 +38,29 @@ FEATURE_LABELS = {
 }
 
 APP_STYLE = (
-    "QMainWindow { background: #f6f8f6; }"
-    "QWidget { color: #1f2d22; font-family: Arial; font-size: 13px; }"
-    "QFrame#header { background: #1f6b45; border-radius: 12px; }"
-    "QLabel#title { color: white; font-size: 25px; font-weight: 700; }"
-    "QLabel#subtitle { color: #dcf1e4; font-size: 14px; }"
-    "QLabel#instruction { color: #445348; }"
-    "QGroupBox { background: white; border: 1px solid #d8e1da; border-radius: 10px; margin-top: 10px; padding: 10px; font-weight: 600; }"
-    "QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; }"
-    "QLabel#hint, QLabel#note, .range { color: #66756a; font-size: 12px; font-weight: 400; }"
-    "QDoubleSpinBox { background: #fbfdfb; border: 1px solid #b9c9bd; border-radius: 5px; padding: 5px; min-height: 22px; }"
-    "QDoubleSpinBox:focus { border: 2px solid #2e7d52; }"
-    "QPushButton { background: #e8eee9; border: 1px solid #c9d5cc; border-radius: 6px; padding: 8px 13px; font-weight: 600; }"
-    "QPushButton:hover { background: #dce8df; }"
-    "QPushButton#primary { background: #237547; color: white; border: 1px solid #1b603a; padding: 8px 18px; }"
-    "QPushButton#primary:hover { background: #195c35; }"
-    "QLabel#result { font-size: 19px; font-weight: 700; color: #145a32; }"
+    "QMainWindow, QWidget#root { background: #f5f3ec; }"
+    "QWidget { color: #20352b; font-family: Arial; font-size: 13px; }"
+    "QLabel { background: transparent; }"
+    "QLabel#brand { font-size: 13px; font-weight: 700; letter-spacing: 3px; color: #456d53; }"
+    "QLabel#title { font-size: 37px; font-weight: 700; letter-spacing: -1px; }"
+    "QLabel#subtitle { color: #738078; font-size: 14px; }"
+    "QLabel#badge { background: #e4eadc; color: #436147; border-radius: 12px; padding: 7px 12px; font-size: 11px; }"
+    "QFrame#inputCard { background: #ffffff; border: 1px solid #e2e5db; border-radius: 18px; }"
+    "QLabel#cardTitle { font-size: 19px; font-weight: 700; }"
+    "QLabel#hint, QLabel#note { color: #7c877d; font-size: 11px; }"
+    "QLabel#fieldLabel { font-weight: 600; font-size: 12px; }"
+    "QDoubleSpinBox { background: #f7f8f3; border: 1px solid #e2e7dc; border-radius: 9px; padding: 9px 12px; min-height: 23px; font-size: 16px; }"
+    "QDoubleSpinBox:focus { border: 1px solid #357451; background: #fff; }"
+    "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width: 18px; border: none; }"
+    "QPushButton { background: transparent; color: #5b6c5f; border: 1px solid #d6ddd0; border-radius: 10px; padding: 12px 18px; font-weight: 600; }"
+    "QPushButton:hover { background: #e9eee3; }"
+    "QPushButton#primary { background: #214e39; color: #fff; border: none; padding: 13px 25px; }"
+    "QPushButton#primary:hover { background: #30684a; }"
+    "QPushButton#primary:pressed { background: #163b2a; }"
+    "QFrame#resultCard { background: #214e39; border-radius: 18px; }"
+    "QLabel#resultCaption { color: #b5cdb5; font-size: 11px; font-weight: 700; letter-spacing: 2px; }"
+    "QLabel#result { font-size: 30px; font-weight: 700; color: #faf9ec; }"
+    "QLabel#resultHint { color: #c3d3c3; font-size: 12px; }"
 )
 
 
@@ -66,7 +72,8 @@ class CropRecommendationWindow(QMainWindow):
         self.ranges = bundle["feature_ranges"]
         self.inputs: dict[str, QDoubleSpinBox] = {}
         self.setWindowTitle("Crop Recommendation")
-        self.setMinimumSize(760, 650)
+        self.setMinimumSize(820, 790)
+        self.resize(900, 850)
         self._build_interface()
 
     def _spin_box(self, feature: str) -> QDoubleSpinBox:
@@ -79,58 +86,78 @@ class CropRecommendationWindow(QMainWindow):
         spin.setValue(round((minimum + maximum) / 2, spin.decimals()))
         spin.setSuffix(" " + {"temperature": "C", "humidity": "%", "rainfall": "mm"}.get(feature, ""))
         spin.setToolTip(f"Observed dataset range: {minimum:.2f} to {maximum:.2f}")
+        spin.valueChanged.connect(self._measurement_changed)
         self.inputs[feature] = spin
         return spin
 
-    def _input_card(self, title: str, subtitle: str, features: tuple[str, ...]) -> QGroupBox:
-        card = QGroupBox(title)
+    def _input_card(self, title: str, subtitle: str, features: tuple[str, ...]) -> QFrame:
+        card = QFrame()
         card.setObjectName("inputCard")
         layout = QVBoxLayout(card)
+        layout.setContentsMargins(22, 22, 22, 22)
+        layout.setSpacing(14)
+        heading = QLabel(title)
+        heading.setObjectName("cardTitle")
+        layout.addWidget(heading)
         hint = QLabel(subtitle)
         hint.setObjectName("hint")
         layout.addWidget(hint)
-        form = QFormLayout()
-        form.setHorizontalSpacing(18)
-        form.setVerticalSpacing(9)
-        for feature in features:
+        form = QGridLayout()
+        form.setHorizontalSpacing(16)
+        form.setVerticalSpacing(14)
+        for index, feature in enumerate(features):
             minimum = float(self.ranges[feature]["min"])
             maximum = float(self.ranges[feature]["max"])
-            label = QLabel(f"{FEATURE_LABELS[feature]}  <span class='range'>{minimum:.1f}-{maximum:.1f}</span>")
-            form.addRow(label, self._spin_box(feature))
+            field = QVBoxLayout()
+            field.setSpacing(5)
+            label = QLabel(FEATURE_LABELS[feature])
+            label.setObjectName("fieldLabel")
+            field.addWidget(label)
+            field.addWidget(self._spin_box(feature))
+            range_label = QLabel(f"{minimum:.2f} – {maximum:.2f}")
+            range_label.setObjectName("hint")
+            field.addWidget(range_label)
+            form.addLayout(field, index // 2, index % 2)
         layout.addLayout(form)
         return card
 
     def _build_interface(self) -> None:
         root = QWidget()
+        root.setObjectName("root")
         layout = QVBoxLayout(root)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(15)
+        layout.setContentsMargins(36, 30, 36, 26)
+        layout.setSpacing(20)
 
         header = QFrame()
         header.setObjectName("header")
         header_layout = QVBoxLayout(header)
-        header_layout.setContentsMargins(20, 17, 20, 17)
-        header_title = QLabel("Crop Recommendation")
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        brand_row = QHBoxLayout()
+        brand = QLabel("CROP / COMPASS")
+        brand.setObjectName("brand")
+        brand_row.addWidget(brand)
+        brand_row.addStretch()
+        badge = QLabel("SOIL → CROP")
+        badge.setObjectName("badge")
+        brand_row.addWidget(badge)
+        header_layout.addLayout(brand_row)
+        header_layout.addSpacing(12)
+        header_title = QLabel("Find your next crop.")
         header_title.setObjectName("title")
         header_layout.addWidget(header_title)
-        header_subtitle = QLabel("A Decision Tree model for exploring soil and weather conditions")
+        header_subtitle = QLabel("Your soil. Your climate. One clear recommendation.")
         header_subtitle.setObjectName("subtitle")
         header_layout.addWidget(header_subtitle)
         layout.addWidget(header)
-
-        instruction = QLabel("Fill in the measurements below. Values are limited to the ranges observed in the training data.")
-        instruction.setObjectName("instruction")
-        instruction.setWordWrap(True)
-        layout.addWidget(instruction)
 
         cards = QGridLayout()
         cards.setHorizontalSpacing(14)
         cards.setVerticalSpacing(14)
         cards.addWidget(
-            self._input_card("Soil nutrients", "Nutrients and soil acidity", ("N", "P", "K", "ph")), 0, 0
+            self._input_card("01  /  Soil profile", "Nutrient levels & acidity", ("N", "P", "K", "ph")), 0, 0
         )
         cards.addWidget(
-            self._input_card("Growing conditions", "Local climate measurements", ("temperature", "humidity", "rainfall")), 0, 1
+            self._input_card("02  /  Climate", "Conditions where you grow", ("temperature", "humidity", "rainfall")), 0, 1
         )
         layout.addLayout(cards)
 
@@ -142,19 +169,28 @@ class CropRecommendationWindow(QMainWindow):
         reset.clicked.connect(self.reset)
         actions.addWidget(reset)
         actions.addStretch()
-        recommend = QPushButton("Get recommendation")
+        recommend = QPushButton("Find my crop  →")
         recommend.setObjectName("primary")
+        recommend.setCursor(Qt.PointingHandCursor)
         recommend.clicked.connect(self.recommend)
         actions.addWidget(recommend)
         layout.addLayout(actions)
 
-        result_box = QGroupBox("Recommendation")
+        result_box = QFrame()
         result_box.setObjectName("resultCard")
         result_layout = QVBoxLayout(result_box)
+        result_layout.setContentsMargins(26, 22, 26, 22)
         result_layout.setSpacing(9)
-        self.result = QLabel("Ready for your measurements")
+        caption = QLabel("YOUR BEST MATCH")
+        caption.setObjectName("resultCaption")
+        result_layout.addWidget(caption)
+        self.result = QLabel("Let's find what fits.")
         self.result.setObjectName("result")
+        self.result.setWordWrap(True)
         result_layout.addWidget(self.result)
+        self.result_hint = QLabel("Enter your measurements, then select Find my crop.")
+        self.result_hint.setObjectName("resultHint")
+        result_layout.addWidget(self.result_hint)
         layout.addWidget(result_box)
 
         note = QLabel("Educational model only - consult local agronomic experts for real farm decisions.")
@@ -180,6 +216,12 @@ class CropRecommendationWindow(QMainWindow):
 
     def _clear_result(self, title: str) -> None:
         self.result.setText(title)
+        self.result_hint.setText("Select Find my crop to get your recommendation.")
+
+    def _measurement_changed(self) -> None:
+        """Clear the previous recommendation when a measurement changes."""
+        if hasattr(self, "result"):
+            self._clear_result("Ready when you are.")
 
     def recommend(self) -> None:
         """Run the saved model and display an interpretable prediction summary."""
@@ -190,7 +232,8 @@ class CropRecommendationWindow(QMainWindow):
             QMessageBox.warning(self, "Invalid measurement", str(error))
             return
 
-        self.result.setText(f"Recommended crop: {result['prediction'].title()}")
+        self.result.setText(result['prediction'].title())
+        self.result_hint.setText("The best predicted crop for the measurements you entered.")
 
 
 def main() -> None:

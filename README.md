@@ -13,7 +13,21 @@ The model predicts one of 22 crop labels from soil nutrient levels (N, P, K), te
 - Extracted Decision Tree rules and perturbed-input robustness checks.
 - A saved model bundle and a command-line prediction demo.
 
-## Setup
+## Double-click to launch
+
+Install Python 3.10 or later (Python 3.12 is a good choice), clone this repository, and open the project folder in your file manager. Double-click the launcher for your operating system:
+
+| Operating system | File to open |
+|---|---|
+| macOS | `Start Crop Compass.command` |
+| Windows | `Start Crop Compass.bat` |
+| Linux | `Start Crop Compass.sh` (choose **Run** or **Run in Terminal** in your file manager) |
+
+The launcher automatically creates a local environment, installs dependencies, prepares the model, and opens the desktop app. First-time setup requires internet and can take a few minutes; keep the setup window open until the app appears. Later launches reuse the environment and model. If dependencies change after pulling an update, the launcher refreshes them automatically.
+
+The launchers are Python app starters, not standalone executables: Python must be installed. On Linux, install your distribution's `python3-venv` package if needed; some file managers require enabling execution of executable text files. Git clones preserve the executable permission on the macOS and Linux launchers; ZIP downloads may require granting that permission in file properties. If macOS blocks a downloaded launcher, use Finder's **Open** action and follow the system prompt.
+
+## Manual setup (optional)
 
 Install Python 3.10 or later and Git. Run all commands from the project folder. A graphical desktop session is required for the interface.
 
@@ -98,7 +112,7 @@ Users can enter the seven soil and weather measurements, then view **only the si
 
 1. Enter the soil nutrients and pH in the **Soil nutrients** panel.
 2. Enter temperature, humidity, and rainfall in **Growing conditions**.
-3. Select **Get recommendation** to display the predicted crop.
+3. Select **Find my crop** to display the predicted crop.
 4. Select **Use example values** to try a built-in example, or **Reset** to restore the input defaults.
 
 For example, N=20, P=75, K=200, temperature=22, humidity=92, pH=6.0, and rainfall=110 produce `Recommended crop: Apple` with the supplied model workflow. Input controls display and enforce the dataset's observed ranges. Nutrient units and the rainfall measurement period must match the source dataset; their primary documentation is not supplied in this repository.
