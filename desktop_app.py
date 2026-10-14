@@ -150,6 +150,31 @@ from crop_recommendation.predict import predict
 
 BASE_DIRECTORY = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIRECTORY / "artifacts" / "decision_tree_model.joblib"
+# Use the closest available symbol for crops without a dedicated Unicode emoji.
+CROP_EMOJIS = {
+    "apple": "🍎",
+    "banana": "🍌",
+    "blackgram": "🫘",
+    "chickpea": "🫘",
+    "coconut": "🥥",
+    "coffee": "☕",
+    "cotton": "☁️",
+    "grapes": "🍇",
+    "jute": "🌿",
+    "kidneybeans": "🫘",
+    "lentil": "🫘",
+    "maize": "🌽",
+    "mango": "🥭",
+    "mothbeans": "🫘",
+    "mungbean": "🫘",
+    "muskmelon": "🍈",
+    "orange": "🍊",
+    "papaya": "🍈",
+    "pigeonpeas": "🫛",
+    "pomegranate": "🍎",
+    "rice": "🌾",
+    "watermelon": "🍉",
+}
 FEATURE_LABELS = {
     "N": "Nitrogen (N)",
     "P": "Phosphorus (P)",
@@ -373,7 +398,8 @@ class CropRecommendationWindow(QMainWindow):
             QMessageBox.warning(self, "Invalid measurement", str(error))
             return
 
-        self.result.setText(result['prediction'].title())
+        crop = result["prediction"]
+        self.result.setText(f"{CROP_EMOJIS.get(crop, '🌱')}  {crop.title()}")
         self.result_hint.setText("The best predicted crop for the measurements you entered.")
 
 
